@@ -2,8 +2,7 @@ name: Sync YouTube playlist
 
 on:
   schedule:
-    - cron: "15 6 * * *"
-      timezone: "Europe/Prague"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
