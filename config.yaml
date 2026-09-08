@@ -1,0 +1,7 @@
+# Runtime settings
+min_duration_minutes: 5
+latest_videos_per_channel: 15
+
+# Add one YouTube channel ID per line.
+channels:
+  - "PUT_CHANNEL_ID_HERE"
