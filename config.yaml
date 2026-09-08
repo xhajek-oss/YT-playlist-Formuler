@@ -2,6 +2,12 @@
 min_duration_minutes: 5
 latest_videos_per_channel: 15
 
-# Add one YouTube channel ID per line.
+# YouTube channel IDs to monitor.
 channels:
-  - "PUT_CHANNEL_ID_HERE"
+  - "UCpZVVcnnHxDJ0vqb0-BeUhw"  # Simon Snopek vlog
+  - "UCXGfA58GfP0L_W8PGMjwK7w"  # Gurmani z Panelaku
+  - "UCK4r7zWzlsEzF9hg9zEBOnA"  # Pohlreich official
+  - "UC1W6aLc1NP6A4nR3hlwbZ6g"  # Malek uvadi
+  - "UCTzeh5mjqdq0S8i7kLzxXxg"  # Jakub a Ivana
+  - "UCbpMZ4ri2yh342M6dH1GFIg"  # Kluci z Prahy
+  - "UC7Z7ifwDlOp_iW2Pf6DYLuQ"  # Daniel Kotula
