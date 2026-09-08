@@ -1,3 +1,32 @@
 {
-  "channels": {}
+  "channels": {
+    "UC1W6aLc1NP6A4nR3hlwbZ6g": {
+      "channel_name": "Málek uvádí",
+      "last_seen_published_at": "2026-08-26T15:00:06Z"
+    },
+    "UC7Z7ifwDlOp_iW2Pf6DYLuQ": {
+      "channel_name": "Daniel Kotula",
+      "last_seen_published_at": "2026-09-03T16:00:28Z"
+    },
+    "UCK4r7zWzlsEzF9hg9zEBOnA": {
+      "channel_name": "Pohlreich official",
+      "last_seen_published_at": "2026-09-07T10:50:21Z"
+    },
+    "UCTzeh5mjqdq0S8i7kLzxXxg": {
+      "channel_name": "Jakub a Ivana",
+      "last_seen_published_at": "2026-09-05T07:47:31Z"
+    },
+    "UCXGfA58GfP0L_W8PGMjwK7w": {
+      "channel_name": "Gurmáni z Paneláku",
+      "last_seen_published_at": "2026-09-05T16:25:09Z"
+    },
+    "UCbpMZ4ri2yh342M6dH1GFIg": {
+      "channel_name": "Kluci z Prahy",
+      "last_seen_published_at": "2026-09-06T16:15:36Z"
+    },
+    "UCpZVVcnnHxDJ0vqb0-BeUhw": {
+      "channel_name": "Šimon Snopek",
+      "last_seen_published_at": "2026-09-06T17:19:46Z"
+    }
+  }
 }
