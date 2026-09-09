@@ -1,11 +1,15 @@
 import json
 import os
+import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 import isodate
 import yaml
+import yt_dlp
+from PIL import Image, ImageChops, ImageStat
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -27,21 +31,36 @@ def load_config():
     min_duration_minutes = float(cfg.get("min_duration_minutes", 5))
     latest_count = int(cfg.get("latest_videos_per_channel", 15))
 
+    static_cfg = cfg.get("static_video_filter", {}) or {}
+    static_channels = {
+        str(x).strip()
+        for x in static_cfg.get("enabled_channels", [])
+        if str(x).strip()
+    }
+
     if not playlist_id:
         raise ValueError(
             "Missing YOUTUBE_PLAYLIST_ID environment variable / GitHub Secret."
         )
 
     if not channels or channels == ["PUT_CHANNEL_ID_HERE"]:
-        raise ValueError(
-            "Add at least one real YouTube channel ID to config.yaml."
-        )
+        raise ValueError("Add at least one real YouTube channel ID to config.yaml.")
 
     return {
         "playlist_id": playlist_id,
         "channels": channels,
         "min_duration_seconds": min_duration_minutes * 60,
         "latest_count": max(1, min(latest_count, 50)),
+        "static_video_filter": {
+            "enabled_channels": static_channels,
+            "sample_count": max(3, min(int(static_cfg.get("sample_count", 10)), 30)),
+            "max_mean_difference": float(
+                static_cfg.get("max_mean_difference", 2.0)
+            ),
+            "min_static_fraction": float(
+                static_cfg.get("min_static_fraction", 0.90)
+            ),
+        },
     }
 
 
@@ -195,6 +214,105 @@ def parse_dt(value):
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def mean_frame_difference(path_a, path_b):
+    with Image.open(path_a) as image_a, Image.open(path_b) as image_b:
+        a = image_a.convert("L")
+        b = image_b.convert("L")
+        diff = ImageChops.difference(a, b)
+        return ImageStat.Stat(diff).mean[0]
+
+
+def is_static_video(video_id, duration_seconds, filter_cfg):
+    sample_count = filter_cfg["sample_count"]
+    threshold = filter_cfg["max_mean_difference"]
+    min_static_fraction = filter_cfg["min_static_fraction"]
+
+    if duration_seconds <= 0:
+        raise RuntimeError(f"Cannot analyze static video with invalid duration: {video_id}")
+
+    with tempfile.TemporaryDirectory(prefix="yt-static-") as tmp:
+        tmp_path = Path(tmp)
+        output_template = str(tmp_path / "video.%(ext)s")
+
+        ydl_opts = {
+            "format": "worstvideo[height<=360]/worst[height<=360]/worstvideo/worst",
+            "outtmpl": output_template,
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(
+                    f"https://www.youtube.com/watch?v={video_id}",
+                    download=True,
+                )
+                downloaded = Path(ydl.prepare_filename(info))
+        except Exception as exc:
+            raise RuntimeError(
+                f"Static-video download failed for {video_id}: {exc}"
+            ) from exc
+
+        if not downloaded.exists():
+            files = [
+                p for p in tmp_path.iterdir()
+                if p.is_file() and not p.name.endswith(".part")
+            ]
+            if not files:
+                raise RuntimeError(
+                    f"Static-video download produced no file for {video_id}"
+                )
+            downloaded = files[0]
+
+        frame_paths = []
+        for index in range(sample_count):
+            position = (index + 1) / (sample_count + 1)
+            timestamp = max(0.0, duration_seconds * position)
+            frame_path = tmp_path / f"frame-{index:02d}.png"
+            command = [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{timestamp:.3f}",
+                "-i",
+                str(downloaded),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=160:-1:flags=area",
+                "-y",
+                str(frame_path),
+            ]
+            try:
+                subprocess.run(command, check=True, timeout=60)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+                raise RuntimeError(
+                    f"ffmpeg frame extraction failed for {video_id}"
+                ) from exc
+            if not frame_path.exists():
+                raise RuntimeError(
+                    f"ffmpeg produced no sample frame for {video_id}"
+                )
+            frame_paths.append(frame_path)
+
+        differences = [
+            mean_frame_difference(frame_paths[i - 1], frame_paths[i])
+            for i in range(1, len(frame_paths))
+        ]
+        static_pairs = sum(value <= threshold for value in differences)
+        static_fraction = static_pairs / len(differences)
+        avg_difference = sum(differences) / len(differences)
+
+        print(
+            f"[STATIC CHECK] {video_id}: static_fraction={static_fraction:.2f}, "
+            f"avg_difference={avg_difference:.2f}, threshold={threshold:.2f}"
+        )
+        return static_fraction >= min_static_fraction
+
+
 def main():
     cfg = load_config()
     state = load_state()
@@ -270,6 +388,19 @@ def main():
                 print(f"[{channel_name}] Already in playlist: {video['title']}")
                 continue
 
+            static_filter = cfg["static_video_filter"]
+            if channel_id in static_filter["enabled_channels"]:
+                if is_static_video(
+                    video["video_id"],
+                    duration,
+                    static_filter,
+                ):
+                    print(
+                        f"[{channel_name}] Skip static-image video: "
+                        f"{video['title']}"
+                    )
+                    continue
+
             candidates.append({
                 **video,
                 "channel_id": channel_id,
@@ -303,6 +434,7 @@ def main():
                 f"[ERROR] Could not add {video['video_id']}: {exc}",
                 file=sys.stderr,
             )
+            raise
 
     if state_changed:
         save_state(state)
