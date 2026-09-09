@@ -43,7 +43,9 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PLAYLIST_ID: ${{ secrets.YOUTUBE_PLAYLIST_ID }}
-        run: python youtube_sync.py
+        run: |
+          python resolve_channels.py
+          python youtube_sync.py
 
       - name: Save sync state
         run: |
