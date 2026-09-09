@@ -29,6 +29,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Expose bundled ffmpeg
+        run: |
+          mkdir -p "$HOME/bin"
+          FFMPEG_PATH="$(python -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
+          ln -sf "$FFMPEG_PATH" "$HOME/bin/ffmpeg"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          "$HOME/bin/ffmpeg" -version
+
       - name: Sync playlist
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
