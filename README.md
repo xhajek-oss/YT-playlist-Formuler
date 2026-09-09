@@ -4,13 +4,15 @@ GitHub Actions automation that watches selected YouTube channels and adds newly 
 
 ## Behavior
 
-- Channel IDs live in `config.yaml`.
+- Channel IDs or YouTube `@handles` live in `config.yaml`.
+- Prefer adding new channels by `@handle` taken directly from the channel URL, for example `https://youtube.com/@chili_tathuy` → `@chili_tathuy`.
+- Do not manually guess a `UC...` channel ID for a new channel. The workflow resolves `@handle` to the correct channel ID through the YouTube Data API before running the sync.
 - The destination playlist ID and OAuth credentials stay in GitHub Secrets.
 - New channels are initialized without importing their old catalogue.
 - Later uploads are added automatically.
 - Videos shorter than 5 minutes are skipped.
 - Duplicate and non-public videos are skipped.
-- The workflow runs daily and can also be started manually.
+- The workflow runs every 15 minutes and can also be started manually.
 
 ## Configure channels
 
@@ -21,11 +23,27 @@ min_duration_minutes: 5
 latest_videos_per_channel: 15
 
 channels:
+  - "@example_channel"
   - "UCxxxxxxxxxxxxxxxx"
-  - "UCyyyyyyyyyyyyyyyy"
 ```
 
-To follow another channel, add one more channel ID and commit the change.
+For a newly added channel, use its `@handle` from the YouTube URL whenever possible. Example:
+
+```text
+https://youtube.com/@example_channel?si=...
+```
+
+Add this to `config.yaml` as:
+
+```yaml
+- "@example_channel"
+```
+
+The workflow resolves the handle automatically, so there is no need to look up or guess the case-sensitive `UC...` ID manually.
+
+## Instruction for future ChatGPT sessions
+
+When the user asks to add a YouTube channel to this repository and provides a channel URL, use the `@handle` from that URL in `config.yaml`. Do not search for or guess the channel's `UC...` ID unless there is no usable handle. The workflow is designed to resolve handles automatically before synchronization. Preserve the existing no-backfill behavior: on first initialization, old videos must not be imported.
 
 ## Required GitHub Secrets
 
@@ -64,7 +82,7 @@ The helper prints the values for the three OAuth GitHub Secrets.
 
 ## First run for a channel
 
-When a channel ID appears in `config.yaml` for the first time, the workflow stores its newest existing upload as a baseline. It does not import the channel's historical videos. Only later uploads are eligible.
+When a channel ID or resolved handle appears in `config.yaml` for the first time, the workflow stores its newest existing upload as a baseline. It does not import the channel's historical videos. Only later uploads are eligible.
 
 ## Duration filter
 
@@ -77,7 +95,7 @@ The duration is read from YouTube API `contentDetails.duration`.
 
 ## State
 
-`state.json` is updated by GitHub Actions and stores the channel ID, channel name, and newest observed upload timestamp. It contains no OAuth credentials or destination playlist ID.
+`state.json` is updated by GitHub Actions and stores the resolved channel ID, channel name, and newest observed upload timestamp. It contains no OAuth credentials or destination playlist ID.
 
 ## Run manually
 
