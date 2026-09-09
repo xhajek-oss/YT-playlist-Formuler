@@ -26,9 +26,6 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Verify ffmpeg
-        run: ffmpeg -version
-
       - name: Install dependencies
         run: pip install -r requirements.txt
 
