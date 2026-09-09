@@ -4,5 +4,5 @@ google-auth-oauthlib==1.2.2
 PyYAML==6.0.2
 isodate==0.7.2
 Pillow==11.3.0
-yt-dlp==2026.8.30
+yt-dlp==2026.8.19
 imageio-ffmpeg>=0.5,<1
