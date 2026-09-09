@@ -2,6 +2,16 @@
 min_duration_minutes: 5
 latest_videos_per_channel: 15
 
+# Optional visual filter. Applied only to channels listed below.
+# A video is skipped when at least 90% of sampled frame-to-frame changes
+# are below the configured mean pixel-difference threshold.
+static_video_filter:
+  enabled_channels:
+    - "UCocMmP5pvWv7HEWrEaq2png"  # Gastromapa Lukase Hejlika
+  sample_count: 10
+  max_mean_difference: 2.0
+  min_static_fraction: 0.90
+
 # YouTube channel IDs to monitor.
 channels:
   - "UCpZVVcnnHxDJ0vqb0-BeUhw"  # Simon Snopek vlog
@@ -14,3 +24,4 @@ channels:
   - "UCIm6e2yAAutDeBvqevWkUhA"  # U nas v USA
   - "UC8Dy7FN8cbq-Cj1FJTot1nQ"  # chvalmc
   - "UCymlC1Q-mDqelZ37RXg8XoA"  # Matej Homola
+  - "UCocMmP5pvWv7HEWrEaq2png"  # Gastromapa Lukase Hejlika
