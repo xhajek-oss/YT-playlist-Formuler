@@ -390,11 +390,21 @@ def main():
 
             static_filter = cfg["static_video_filter"]
             if channel_id in static_filter["enabled_channels"]:
-                if is_static_video(
-                    video["video_id"],
-                    duration,
-                    static_filter,
-                ):
+                try:
+                    static_video = is_static_video(
+                        video["video_id"],
+                        duration,
+                        static_filter,
+                    )
+                except RuntimeError as exc:
+                    print(
+                        f"[{channel_name}] Skip (static check unavailable): "
+                        f"{video['title']} — {exc}",
+                        file=sys.stderr,
+                    )
+                    continue
+
+                if static_video:
                     print(
                         f"[{channel_name}] Skip static-image video: "
                         f"{video['title']}"
