@@ -232,38 +232,54 @@ def is_static_video(video_id, duration_seconds, filter_cfg):
 
     with tempfile.TemporaryDirectory(prefix="yt-static-") as tmp:
         tmp_path = Path(tmp)
-        output_template = str(tmp_path / "video.%(ext)s")
 
         ydl_opts = {
-            "format": "worstvideo[height<=360]/worst[height<=360]/worstvideo/worst",
-            "outtmpl": output_template,
+            "format": (
+                "worst[protocol*=m3u8][height<=360]/"
+                "worst[protocol*=m3u8]/"
+                "worst[height<=360]/worst"
+            ),
             "quiet": True,
             "no_warnings": True,
             "noplaylist": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["web_safari"],
+                }
+            },
         }
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(
                     f"https://www.youtube.com/watch?v={video_id}",
-                    download=True,
+                    download=False,
                 )
-                downloaded = Path(ydl.prepare_filename(info))
         except Exception as exc:
             raise RuntimeError(
-                f"Static-video download failed for {video_id}: {exc}"
+                f"Static-video stream lookup failed for {video_id}: {exc}"
             ) from exc
 
-        if not downloaded.exists():
-            files = [
-                p for p in tmp_path.iterdir()
-                if p.is_file() and not p.name.endswith(".part")
-            ]
-            if not files:
-                raise RuntimeError(
-                    f"Static-video download produced no file for {video_id}"
-                )
-            downloaded = files[0]
+        stream_url = info.get("url")
+        if not stream_url:
+            requested_formats = info.get("requested_formats") or []
+            stream_url = next(
+                (
+                    fmt.get("url")
+                    for fmt in requested_formats
+                    if fmt.get("vcodec") != "none" and fmt.get("url")
+                ),
+                None,
+            )
+
+        if not stream_url:
+            raise RuntimeError(
+                f"Static-video stream lookup returned no playable URL for {video_id}"
+            )
+
+        http_headers = info.get("http_headers") or {}
+        user_agent = http_headers.get("User-Agent")
+        referer = http_headers.get("Referer")
 
         frame_paths = []
         for index in range(sample_count):
@@ -277,20 +293,27 @@ def is_static_video(video_id, duration_seconds, filter_cfg):
                 "error",
                 "-ss",
                 f"{timestamp:.3f}",
+            ]
+            if user_agent:
+                command.extend(["-user_agent", user_agent])
+            if referer:
+                command.extend(["-headers", f"Referer: {referer}\r\n"])
+            command.extend([
                 "-i",
-                str(downloaded),
+                stream_url,
                 "-frames:v",
                 "1",
                 "-vf",
                 "scale=160:-1:flags=area",
                 "-y",
                 str(frame_path),
-            ]
+            ])
+
             try:
                 subprocess.run(command, check=True, timeout=60)
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
                 raise RuntimeError(
-                    f"ffmpeg frame extraction failed for {video_id}"
+                    f"ffmpeg stream sample failed for {video_id} at {timestamp:.1f}s"
                 ) from exc
             if not frame_path.exists():
                 raise RuntimeError(
@@ -308,7 +331,8 @@ def is_static_video(video_id, duration_seconds, filter_cfg):
 
         print(
             f"[STATIC CHECK] {video_id}: static_fraction={static_fraction:.2f}, "
-            f"avg_difference={avg_difference:.2f}, threshold={threshold:.2f}"
+            f"avg_difference={avg_difference:.2f}, threshold={threshold:.2f}, "
+            "source=stream"
         )
         return static_fraction >= min_static_fraction
 
