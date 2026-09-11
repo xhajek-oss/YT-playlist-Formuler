@@ -8,7 +8,7 @@ latest_videos_per_channel: 15
 static_video_filter:
   enabled_channels:
     - "UCocMmP5pvWv7HEWrEaq2png"  # Gastromapa Lukase Hejlika
-  sample_count: 10
+  sample_count: 6
   max_mean_difference: 2.0
   min_static_fraction: 0.90
 
