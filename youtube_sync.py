@@ -391,6 +391,8 @@ def main():
         if fresh:
             fresh = add_durations(youtube, fresh)
 
+        retry_needed = False
+
         for video in fresh:
             duration = video.get("duration_seconds")
             if duration is None:
@@ -421,8 +423,9 @@ def main():
                         static_filter,
                     )
                 except RuntimeError as exc:
+                    retry_needed = True
                     print(
-                        f"[{channel_name}] Skip (static check unavailable): "
+                        f"[{channel_name}] Skip for retry (static check unavailable): "
                         f"{video['title']} — {exc}",
                         file=sys.stderr,
                     )
@@ -441,7 +444,12 @@ def main():
                 "channel_name": channel_name,
             })
 
-        if parse_dt(newest_seen) > last_seen:
+        if retry_needed:
+            print(
+                f"[{channel_name}] State not advanced because at least one "
+                "static check must be retried."
+            )
+        elif parse_dt(newest_seen) > last_seen:
             state["channels"][channel_id] = {
                 "channel_name": channel_name,
                 "last_seen_published_at": newest_seen,
