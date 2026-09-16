@@ -1,0 +1,132 @@
+name: TEST Gastromapa PO Token
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-pot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install -U "yt-dlp>=2026.8.19" bgutil-ytdlp-pot-provider Pillow imageio-ffmpeg
+
+      - name: Start PO Token Provider
+        run: |
+          docker run --name bgutil-provider -d --init \
+            -p 127.0.0.1:4416:4416 \
+            brainicism/bgutil-ytdlp-pot-provider:latest
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4416/ >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker ps --filter name=bgutil-provider
+
+      - name: Verify PO provider and sample latest Gastromapa candidate
+        env:
+          VIDEO_ID: K9nLjeQ4JRg
+        run: |
+          set -euo pipefail
+          VIDEO_URL="https://www.youtube.com/watch?v=${VIDEO_ID}"
+          echo "Testing Gastromapa video: $VIDEO_URL"
+          echo "No YouTube cookies or account credentials are used in this test."
+
+          python - <<'PY'
+          import os
+          import subprocess
+          import tempfile
+          from pathlib import Path
+
+          from PIL import Image, ImageChops, ImageStat
+          import imageio_ffmpeg
+          import yt_dlp
+
+          video_id = os.environ["VIDEO_ID"]
+          url = f"https://www.youtube.com/watch?v={video_id}"
+
+          opts = {
+              "quiet": False,
+              "verbose": True,
+              "skip_download": True,
+              "format": "best[height<=360]/worst",
+              "extractor_args": {
+                  "youtube": {
+                      "player_client": ["mweb"],
+                      "pot_trace": ["true"],
+                  }
+              },
+          }
+
+          print("\n=== yt-dlp + mweb + PO Token Provider ===")
+          with yt_dlp.YoutubeDL(opts) as ydl:
+              info = ydl.extract_info(url, download=False)
+
+          stream_url = info.get("url")
+          if not stream_url:
+              for fmt in info.get("requested_formats") or []:
+                  if fmt.get("url") and fmt.get("vcodec") != "none":
+                      stream_url = fmt["url"]
+                      break
+          if not stream_url:
+              raise RuntimeError("yt-dlp returned no usable video stream URL")
+
+          duration = float(info.get("duration") or 0)
+          if duration <= 0:
+              raise RuntimeError("Video duration unavailable")
+
+          print(f"Resolved: {info.get('title')} ({duration:.1f}s)")
+          print("SUCCESS: yt-dlp obtained a stream URL using the PO Token setup.")
+
+          ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+          sample_count = 6
+          positions = [duration * (i + 1) / (sample_count + 1) for i in range(sample_count)]
+          frames = []
+
+          headers = info.get("http_headers") or {}
+          header_args = []
+          if headers:
+              header_blob = "".join(f"{k}: {v}\r\n" for k, v in headers.items())
+              header_args = ["-headers", header_blob]
+
+          with tempfile.TemporaryDirectory() as tmp:
+              for i, pos in enumerate(positions):
+                  out = Path(tmp) / f"frame-{i}.jpg"
+                  cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-ss", str(pos), *header_args,
+                         "-i", stream_url, "-frames:v", "1", "-vf", "scale=320:-2", "-y", str(out)]
+                  subprocess.run(cmd, check=True, timeout=60)
+                  frames.append(Image.open(out).convert("L").copy())
+                  print(f"Sample {i+1}/{sample_count}: OK at {pos:.1f}s")
+
+          diffs = []
+          for a, b in zip(frames, frames[1:]):
+              diff = ImageChops.difference(a, b)
+              diffs.append(ImageStat.Stat(diff).mean[0])
+
+          threshold = 2.0
+          static_fraction = sum(d <= threshold for d in diffs) / len(diffs)
+          is_static = static_fraction >= 0.90
+          print("\n=== STATIC FILTER RESULT ===")
+          print("Mean pixel differences:", ", ".join(f"{d:.3f}" for d in diffs))
+          print(f"Static fraction: {static_fraction:.0%}")
+          print(f"Classification: {'STATIC -> would be skipped' if is_static else 'DYNAMIC -> would be added'}")
+          print("TEST PASSED: PO Token stream lookup and all 6 frame samples succeeded.")
+          PY
+
+      - name: Provider logs on failure
+        if: failure()
+        run: docker logs bgutil-provider || true
