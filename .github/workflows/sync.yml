@@ -44,8 +44,24 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_PLAYLIST_ID: ${{ secrets.YOUTUBE_PLAYLIST_ID }}
         run: |
-          python resolve_channels.py
-          python youtube_sync.py
+          set +e
+          python resolve_channels.py 2>&1 | tee sync.log
+          STATUS=${PIPESTATUS[0]}
+
+          if [ "$STATUS" -eq 0 ]; then
+            python youtube_sync.py 2>&1 | tee -a sync.log
+            STATUS=${PIPESTATUS[0]}
+          fi
+
+          if [ "$STATUS" -ne 0 ]; then
+            if grep -Eqi "invalid_grant|Token has been expired or revoked|refresh.?token.*(expired|revoked)" sync.log; then
+              echo "::error title=YouTube OAuth token expired or revoked::Generate a new refresh token and update the GitHub Secret YOUTUBE_REFRESH_TOKEN."
+              echo ""
+              echo "❌ YouTube OAuth token expired or was revoked."
+              echo "Generate a new refresh token and update the GitHub Secret YOUTUBE_REFRESH_TOKEN."
+            fi
+            exit "$STATUS"
+          fi
 
       - name: Save sync state
         run: |
