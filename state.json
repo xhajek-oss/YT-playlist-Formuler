@@ -40,10 +40,6 @@
       "channel_name": "Kluci z Prahy",
       "last_seen_published_at": "2026-09-13T16:15:36Z"
     },
-    "UCocMmP5pvWv7HEWrEaq2png": {
-      "channel_name": "Gastromapa Lukáše Hejlíka",
-      "last_seen_published_at": "2026-09-09T12:08:09Z"
-    },
     "UCpZVVcnnHxDJ0vqb0-BeUhw": {
       "channel_name": "Šimon Snopek",
       "last_seen_published_at": "2026-09-13T14:55:57Z"
@@ -51,6 +47,34 @@
     "UCymlC1Q-mDqelZ37RXg8XoA": {
       "channel_name": "matej homola",
       "last_seen_published_at": "2026-08-25T19:01:58Z"
+    }
+  },
+  "source_playlists": {
+    "PLKtOilK-cEmXgWJ-OYVRabGOa5GzId4wl": {
+      "name": "Gastromapa Lukase Hejlika",
+      "seen_video_ids": [
+        "GRV6VHSZKuo",
+        "TP7tpLBJKNQ",
+        "fuUEqQpb4Hg",
+        "ddA7lkfudYk",
+        "Rw7zSoAUpvE",
+        "VmdxFMm13A8",
+        "DJkpLdo-cYM",
+        "bInNm73z5dc",
+        "KpUqymwMDPw",
+        "BZvvQ_zflyM",
+        "SzwrsCCMiR8",
+        "u8fHmibH_p4",
+        "lAA_ljcDfx4",
+        "CxLl4923Qw8",
+        "iyfxn1W-36o",
+        "Zpt2H1R7eW4",
+        "1k95WkBBovU",
+        "Ytpkw4MIH_4",
+        "4_tdD_99p7I",
+        "4zzpHbyPw-g",
+        "0KT1xab4XP8"
+      ]
     }
   }
 }
