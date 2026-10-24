@@ -19,6 +19,8 @@ channels:
   - "@marekvcine"  # Marek v Cine
   - "@milanbezmapy"  # Milan bez mapy
 
+  - "@vasnivyknedlik"  # Vasnivy knedlik
+
 # Curated source playlists: every newly appearing public video is copied to
 # the destination playlist. Existing playlist contents are only remembered
 # on first run and are not backfilled.
