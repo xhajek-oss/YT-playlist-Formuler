@@ -21,6 +21,8 @@ channels:
 
   - "@vasnivyknedlik"  # Vasnivy knedlik
 
+  - "@rolandregely"  # Roland Regely
+
 # Curated source playlists: every newly appearing public video is copied to
 # the destination playlist. Existing playlist contents are only remembered
 # on first run and are not backfilled.
